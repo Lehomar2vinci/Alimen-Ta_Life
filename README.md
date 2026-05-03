@@ -1,10 +1,6 @@
 # Alimen'Ta Life
 
-Site vitrine statique pour promouvoir **Alimen'Ta Life : Le Réseau des GASAP**.
-
-Le projet propose une page web visuelle, colorée et interactive, inspirée par une esthétique de boule roulante, d’objets absurdes qui s’agrègent, de légumes et d’animations fantaisistes.
-
-Le site est entièrement statique : aucun backend, aucune base de données, aucune dépendance externe.
+Site pour promouvoir **Alimen'Ta Life : Le Réseau des GASAP**.
 
 ## Aperçu
 
