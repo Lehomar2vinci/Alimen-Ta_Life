@@ -1,4 +1,4 @@
-# Alimen'Ta Life — Site statique animé
+# Alimen'Ta Life
 
 Site vitrine statique pour promouvoir **Alimen'Ta Life : Le Réseau des GASAP**.
 
