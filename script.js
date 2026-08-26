@@ -2,6 +2,28 @@ const prefersReducedMotion = window.matchMedia(
   "(prefers-reduced-motion: reduce)",
 ).matches;
 
+// Progressive UX/accessibility enhancements.
+const enhancementStyles = document.createElement("link");
+enhancementStyles.rel = "stylesheet";
+enhancementStyles.href = "enhancements.css";
+document.head.appendChild(enhancementStyles);
+
+let soundEnabled = false;
+
+try {
+  soundEnabled = localStorage.getItem("alimenta-sound") === "on";
+} catch {
+  soundEnabled = false;
+}
+
+function persistSoundPreference() {
+  try {
+    localStorage.setItem("alimenta-sound", soundEnabled ? "on" : "off");
+  } catch {
+    // Storage can be unavailable in private/restricted browsing contexts.
+  }
+}
+
 const revealObserver = new IntersectionObserver(
   (entries) => {
     entries.forEach((entry) => {
@@ -133,17 +155,11 @@ function confettiBurst(amount = 28) {
   }
 }
 
-document.querySelectorAll("a").forEach((link) => {
+document.querySelectorAll("a.button, a.cta-small").forEach((link) => {
   link.addEventListener("click", () => {
     confettiBurst(18);
   });
 });
-
-setInterval(() => {
-  if (document.visibilityState === "visible") {
-    confettiBurst(8);
-  }
-}, 9000);
 
 const bubbleLines = [
   "“Je suis une patate sociale.”",
@@ -323,7 +339,7 @@ function getAudioContext() {
 }
 
 function playBoop(frequency = 440, duration = 0.08, type = "square") {
-  if (prefersReducedMotion) return;
+  if (!soundEnabled) return;
 
   const context = getAudioContext();
   if (!context) return;
@@ -363,6 +379,10 @@ function showSoundPop(x, y, text = "boop") {
 }
 
 document.addEventListener("click", (event) => {
+  growMeter(5);
+
+  if (!soundEnabled || event.target.closest("[data-sound-toggle]")) return;
+
   const notes = [220, 247, 262, 330, 392, 440, 523, 659];
   const words = ["boop", "pouet", "tchac", "miam", "gling", "roule"];
 
@@ -372,8 +392,6 @@ document.addEventListener("click", (event) => {
     event.clientY,
     words[Math.floor(Math.random() * words.length)],
   );
-
-  growMeter(5);
 });
 
 document
@@ -416,4 +434,143 @@ if (speechBubble) {
     speechBubble.textContent =
       cosmicLines[Math.floor(Math.random() * cosmicLines.length)];
   }, 2200);
+}
+
+// --- Accessibility and mobile navigation enhancements ---
+if (prefersReducedMotion) {
+  document.querySelectorAll(".reveal").forEach((el) => {
+    el.classList.add("in-view");
+    el.style.transitionDelay = "0ms";
+  });
+
+  document.querySelectorAll("[data-count]").forEach((el) => {
+    const target = Number(el.dataset.count || 0);
+    el.textContent = target.toLocaleString("fr-BE");
+  });
+}
+
+const mainContent = document.querySelector("main");
+const siteHeader = document.querySelector(".site-header");
+const desktopNav = document.querySelector(".nav");
+
+if (mainContent && !document.querySelector(".skip-link")) {
+  mainContent.setAttribute("tabindex", "-1");
+
+  const skipLink = document.createElement("a");
+  skipLink.className = "skip-link";
+  skipLink.href = "#top";
+  skipLink.textContent = "Aller au contenu principal";
+  skipLink.addEventListener("click", () => {
+    window.setTimeout(() => mainContent.focus(), 0);
+  });
+
+  document.body.prepend(skipLink);
+}
+
+const soundButtons = [];
+
+function updateSoundButtons() {
+  soundButtons.forEach((button) => {
+    button.setAttribute("aria-pressed", String(soundEnabled));
+    button.textContent = soundEnabled ? "Son : activé 🔊" : "Son : coupé 🔇";
+  });
+}
+
+function createSoundButton() {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "nav-control";
+  button.dataset.soundToggle = "true";
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    soundEnabled = !soundEnabled;
+    persistSoundPreference();
+    updateSoundButtons();
+
+    if (soundEnabled) {
+      playBoop(523, 0.09, "triangle");
+    }
+  });
+
+  soundButtons.push(button);
+  updateSoundButtons();
+  return button;
+}
+
+if (desktopNav && !desktopNav.querySelector("[data-sound-toggle]")) {
+  desktopNav.appendChild(createSoundButton());
+}
+
+if (siteHeader && desktopNav && !document.querySelector(".mobile-nav-toggle")) {
+  const menuButton = document.createElement("button");
+  menuButton.type = "button";
+  menuButton.className = "mobile-nav-toggle";
+  menuButton.setAttribute("aria-expanded", "false");
+  menuButton.setAttribute("aria-controls", "mobile-navigation");
+  menuButton.textContent = "Menu ☰";
+
+  const mobilePanel = document.createElement("nav");
+  mobilePanel.id = "mobile-navigation";
+  mobilePanel.className = "mobile-nav-panel";
+  mobilePanel.setAttribute("aria-label", "Navigation mobile");
+  mobilePanel.hidden = true;
+
+  desktopNav.querySelectorAll("a").forEach((link) => {
+    mobilePanel.appendChild(link.cloneNode(true));
+  });
+
+  mobilePanel.appendChild(createSoundButton());
+
+  function closeMobileMenu() {
+    mobilePanel.hidden = true;
+    menuButton.setAttribute("aria-expanded", "false");
+    siteHeader.classList.remove("menu-open");
+  }
+
+  menuButton.addEventListener("click", () => {
+    const willOpen = mobilePanel.hidden;
+    mobilePanel.hidden = !willOpen;
+    menuButton.setAttribute("aria-expanded", String(willOpen));
+    siteHeader.classList.toggle("menu-open", willOpen);
+  });
+
+  mobilePanel.addEventListener("click", (event) => {
+    if (event.target.closest("a")) {
+      closeMobileMenu();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !mobilePanel.hidden) {
+      closeMobileMenu();
+      menuButton.focus();
+    }
+  });
+
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 920 && !mobilePanel.hidden) {
+      closeMobileMenu();
+    }
+  });
+
+  siteHeader.appendChild(menuButton);
+  document.body.appendChild(mobilePanel);
+}
+
+document.querySelectorAll(".talking-veg, .stuck").forEach((item) => {
+  item.setAttribute("aria-hidden", "true");
+});
+
+if (cosmicButton) {
+  cosmicButton.setAttribute(
+    "aria-pressed",
+    String(document.body.classList.contains("cosmic-mode")),
+  );
+
+  cosmicButton.addEventListener("click", () => {
+    cosmicButton.setAttribute(
+      "aria-pressed",
+      String(document.body.classList.contains("cosmic-mode")),
+    );
+  });
 }
